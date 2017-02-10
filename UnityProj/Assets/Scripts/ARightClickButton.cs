@@ -10,7 +10,7 @@ public class ARightClickButton : MonoBehaviour, IPointerClickHandler
         if (eventData.button == PointerEventData.InputButton.Left)
         {
             AGridToggle bt = GetComponent<AGridToggle>();
-            bt.m_pOwner.OnPressMine(bt.m_iX, bt.m_iY);
+            bt.m_pOwner.OnPressMine(bt.m_iX, bt.m_iY, EPressType.EPT_Dig);
         }
         else if (eventData.button == PointerEventData.InputButton.Middle)
         {
@@ -20,7 +20,7 @@ public class ARightClickButton : MonoBehaviour, IPointerClickHandler
         {
             //Debug.Log("Right click");
             AGridToggle bt = GetComponent<AGridToggle>();
-            bt.m_pOwner.OnTagMine(bt.m_iX, bt.m_iY);
+            bt.m_pOwner.OnPressMine(bt.m_iX, bt.m_iY, EPressType.EPT_Tag);
         }
     }
 }
