@@ -1,14 +1,28 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
 using System.Collections;
+using System.Collections.Generic;
 
 public enum EGridState
 {
     EGS_Close,
+    EGS_CloseFrozen,
+    EGS_CloseSafe,
     EGS_Tag,
     EGS_OpenNoBomb,
+    EGS_OpenGhost,
     EGS_OpenBomb,
     EGS_Empty,
+}
+
+public enum EGridEffect
+{
+    EGE_Dig,
+    EGE_DigGolden,
+    EGE_Explode,
+    EGE_DigLink,
+    EGE_MouseLink,
+    EGE_FrozenLink,
 }
 
 public class AGridToggle : MonoBehaviour
@@ -22,17 +36,70 @@ public class AGridToggle : MonoBehaviour
     public int m_iY;
 
     public Text[] m_pNumbers;
-    public static readonly Color[] m_cCoverColors = new []
+
+    public List<CLines> m_pLines;
+    public List<CLines> m_pStartLines;
+
+    public Image m_pBomb;
+    public Image m_pFlag;
+    public Text m_pGhost;
+
+    public ParticleSystem[] m_pParticles;
+
+    private EGridState m_eOldState;
+    private float m_fPlay = -1.0f;
+    private EPressType m_ePressType;
+
+    public static readonly Color[][] m_cCoverColors = new []
     {
-        new Color(255.0f / 255.0f, 195.0f / 255.0f, 65.0f / 255.0f), 
-        new Color(248.0f / 255.0f, 103.0f / 255.0f, 86.0f / 255.0f), 
-        new Color(53.0f/ 255.0f, 215.0f / 255.0f, 255.0f / 255.0f), 
-        new Color(80.0f / 255.0f, 80.0f / 255.0f, 80.0f / 255.0f), 
+        new []
+        {
+            new Color(255.0f / 255.0f, 195.0f / 255.0f, 65.0f / 255.0f), 
+            new Color(253.0f / 255.0f, 164.0f / 255.0f, 30.0f / 255.0f), 
+            new Color(255.0f / 255.0f, 228.0f / 255.0f, 30.0f / 255.0f)
+        }, 
+        new []
+        {
+            new Color(171.0f / 255.0f, 171.0f / 255.0f, 171.0f / 255.0f),
+            new Color(208.0f / 255.0f, 208.0f / 255.0f, 208.0f / 255.0f),
+            new Color(146.0f / 255.0f, 146.0f / 255.0f, 146.0f / 255.0f),
+        }, 
+        new []
+        {
+            new Color(30.0f/ 255.0f, 251.0f / 255.0f, 31.0f / 255.0f),
+            new Color(30.0f/ 255.0f, 251.0f / 255.0f, 141.0f / 255.0f),
+            new Color(114.0f/ 255.0f, 255.0f / 255.0f, 0.0f / 255.0f),
+        }, 
+        new []
+        {
+            new Color(255.0f / 255.0f, 113.0f / 255.0f, 145.0f / 255.0f),
+            new Color(255.0f / 255.0f, 6.0f / 255.0f, 114.0f / 255.0f),
+            new Color(255.0f / 255.0f, 89.0f / 255.0f, 69.0f / 255.0f),
+        }, 
+        new []
+        {
+            new Color(69.0f / 255.0f, 224.0f / 255.0f, 255.0f / 255.0f),
+            new Color(139.0f / 255.0f, 192.0f / 255.0f, 255.0f / 255.0f),
+            new Color(25.0f / 255.0f, 154.0f / 255.0f, 246.0f / 255.0f),
+        }, 
+        new []
+        {
+            new Color(69.0f / 255.0f, 224.0f / 255.0f, 255.0f / 255.0f),
+            new Color(139.0f / 255.0f, 192.0f / 255.0f, 255.0f / 255.0f),
+            new Color(25.0f / 255.0f, 154.0f / 255.0f, 246.0f / 255.0f),
+        }, 
+        new []
+        {
+            new Color(80.0f / 255.0f, 80.0f / 255.0f, 80.0f / 255.0f),
+            new Color(60.0f / 255.0f, 60.0f / 255.0f, 60.0f / 255.0f),
+            new Color(70.0f / 255.0f, 70.0f / 255.0f, 70.0f / 255.0f),
+        }, 
+        new [] {new Color(255.0f / 255.0f, 255.0f / 255.0f, 255.0f / 255.0f), }, 
     };
 
     public Image[] m_pWalls;
-    private readonly static Vector3 m_vHorizen = new Vector3(0.8f, 0.45f, 0.0f);
-    private readonly static Vector3 m_vVertical = new Vector3(0.8f, -0.45f, 0.0f);
+    private readonly static Vector3 m_vHorizen = new Vector3(0.62f, 0.45f, 0.0f);
+    private readonly static Vector3 m_vVertical = new Vector3(0.62f, -0.45f, 0.0f);
     public void PutToGridWithWH(int iW, int iH)
     {
         float fScale;
@@ -50,6 +117,7 @@ public class AGridToggle : MonoBehaviour
                 break;
             case 7:
             case 8:
+            case 9:
                 fScale = 1.0f;
                 break;
             default:
@@ -67,6 +135,20 @@ public class AGridToggle : MonoBehaviour
             rectTransform.localScale = new Vector3(fScale, fScale, fScale);
         }
         gameObject.name = "Grid_" + m_iX + "_" + m_iY;
+    }
+
+
+    public void Update()
+    {
+        if (m_fPlay > 0.0f)
+        {
+            m_fPlay -= Time.deltaTime;
+            if (m_fPlay <= 0.0f)
+            {
+                m_fPlay = -1.0f;
+                OnOpen();
+            }
+        }
     }
 
     public void SetOwner(AUI pOwner)
@@ -100,9 +182,21 @@ public class AGridToggle : MonoBehaviour
         }
     }
 
-    public EGridState m_eState;
-    public void SetGridState(EGridState eState)
+    private EGridState m_eState;
+
+    public EGridState GetState()
     {
+        return m_eState;
+    }
+
+    public void PlayEffect(EGridEffect eEffect)
+    {
+        m_pParticles[(int)eEffect].Play();
+    }
+
+    public void SetGridState(EGridState eState, EPressType ePress, float fPlay = -1.0f)
+    {
+        m_eOldState = m_eState;
         m_eState = eState;
         if (EGridState.EGS_Empty == eState)
         {
@@ -117,20 +211,77 @@ public class AGridToggle : MonoBehaviour
             m_pButtonIcon.enabled = false;
             m_pButton.enabled = false;
             m_pButtonEdge.enabled = false;
+            m_pBomb.enabled = false;
+            m_pFlag.enabled = false;
+            m_pGhost.enabled = false;
             return;
         }
 
+        if (EGridState.EGS_OpenNoBomb == m_eState
+         || EGridState.EGS_OpenGhost == m_eState)
+        {
+            if (fPlay > 0.0f)
+            {
+                m_ePressType = ePress;
+                m_fPlay = fPlay;
+                return;
+            }
+        }
+
         m_pButtonEdge.enabled = true;
-        m_pButtonIcon.color = m_cCoverColors[(int) eState];
+        m_pButtonIcon.color = m_cCoverColors[(int)eState][Random.Range(0, m_cCoverColors[(int)eState].Length)];
         for (int i = 0; i < (int)EDir.Max; ++i)
         {
             m_pWalls[i].enabled = false;
         }
         for (int i = 0; i < (int)EDir.Max; ++i)
         {
-            m_pNumbers[i].text = "";
+            m_pNumbers[i].enabled = (EGridState.EGS_OpenNoBomb == m_eState);
         }
 
-        m_pButton.interactable = (EGridState.EGS_Close == eState);
+        m_pBomb.enabled = EGridState.EGS_OpenBomb == m_eState;
+        m_pFlag.enabled = EGridState.EGS_Tag == m_eState;
+        m_pGhost.enabled = EGridState.EGS_OpenGhost == m_eState;
+    }
+
+    private void OnOpen()
+    {
+        m_pButtonEdge.enabled = true;
+        m_pButtonIcon.color = m_cCoverColors[(int)m_eState][Random.Range(0, m_cCoverColors[(int)m_eState].Length)];
+        for (int i = 0; i < (int)EDir.Max; ++i)
+        {
+            m_pWalls[i].enabled = false;
+        }
+        for (int i = 0; i < (int)EDir.Max; ++i)
+        {
+            m_pNumbers[i].enabled = (EGridState.EGS_OpenNoBomb == m_eState);
+        }
+
+        m_pBomb.enabled = EGridState.EGS_OpenBomb == m_eState;
+        m_pFlag.enabled = EGridState.EGS_Tag == m_eState;
+        m_pGhost.enabled = EGridState.EGS_OpenGhost == m_eState;
+
+        switch (m_ePressType)
+        {
+            case EPressType.EPT_Max:
+                if (EGridState.EGS_CloseFrozen == m_eOldState)
+                {
+                    PlayEffect(EGridEffect.EGE_FrozenLink);
+                }
+                else
+                {
+                    PlayEffect(EGridEffect.EGE_DigLink);
+                }
+                break;
+            case EPressType.EPT_GoldenDig: 
+                PlayEffect(EGridEffect.EGE_DigGolden);
+                break;
+            case EPressType.EPT_Mouse:
+                PlayEffect(EGridEffect.EGE_MouseLink);
+                break;
+            case EPressType.EPT_Dig:
+                PlayEffect(EGridEffect.EGE_Dig);
+                break;
+        }
     }
 }

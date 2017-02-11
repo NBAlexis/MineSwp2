@@ -6,7 +6,6 @@ public enum ELineType
 {
     ELT_Normal,
     ELT_Frozen,
-    ELT_Empty,
 }
 
 public class CLines
@@ -24,13 +23,13 @@ public class CLines
 
 public class CPuzzle
 {
-    public byte[,] m_byGrids;
+    public ushort[,] m_ushGrids;
     public CLines[] m_pLines;
     public bool m_bValid = true;
 
     public bool HasGrid(int iX, int iY)
     {
-        return iX >= 0 && iX < m_byGrids.GetLength(0) && iY >= 0 && iY < m_byGrids.GetLength(1);
+        return iX >= 0 && iX < m_ushGrids.GetLength(0) && iY >= 0 && iY < m_ushGrids.GetLength(1);
     }
 
     public bool HasWall(EDir eDir, int iX, int iY)
@@ -39,7 +38,7 @@ public class CPuzzle
         {
             return eDir == EDir.RU || eDir == EDir.Right;
         }
-        if (iX > m_byGrids.GetLength(0) - 1)
+        if (iX > m_ushGrids.GetLength(0) - 1)
         {
             return eDir == EDir.LD || eDir == EDir.Left;
         }
@@ -47,7 +46,7 @@ public class CPuzzle
         {
             return eDir == EDir.LD || eDir == EDir.Down;
         }
-        if (iY > m_byGrids.GetLength(0) - 1)
+        if (iY > m_ushGrids.GetLength(0) - 1)
         {
             return eDir == EDir.RU || eDir == EDir.Up;
         }
@@ -57,27 +56,64 @@ public class CPuzzle
             return true;
         }
 
-        return 0 != (m_byGrids[iX, iY] & (1 << (int) eDir));
+        return 0 != (m_ushGrids[iX, iY] & (1 << (int)eDir));
     }
 
     public bool HasBomb(int iX, int iY)
     {
-        return 0 != (m_byGrids[iX, iY] & (1 << (int)EDir.Max));
+        return (0 != (m_ushGrids[iX, iY] & (1 << (int)EDir.Bomb))) || (0 != (m_ushGrids[iX, iY] & (1 << (int)EDir.GhostBomb)));
+    }
+
+    public bool HasGhostBomb(int iX, int iY)
+    {
+        return (0 != (m_ushGrids[iX, iY] & (1 << (int)EDir.GhostBomb)));
     }
 
     public void PutBomb(int iX, int iY)
     {
-        m_byGrids[iX, iY] |= (byte)(1 << (int) EDir.Max);
+        m_ushGrids[iX, iY] |= (ushort)(1 << (int)EDir.Bomb);
+    }
+
+    public void PutGhostBomb(int iX, int iY)
+    {
+        m_ushGrids[iX, iY] |= (ushort)(1 << (int)EDir.GhostBomb);
+    }
+
+    public void RemoveBomb(int iX, int iY)
+    {
+        ushort b1 = (1 << (int)EDir.Bomb);
+        b1 = (ushort)(~b1);
+        m_ushGrids[iX, iY] = (ushort)(b1 & m_ushGrids[iX, iY]);
+
+        b1 = (1 << (int)EDir.GhostBomb);
+        b1 = (ushort)(~b1);
+        m_ushGrids[iX, iY] = (ushort)(b1 & m_ushGrids[iX, iY]);
     }
 
     public bool IsEmpty(int iX, int iY)
     {
-        return 0 != (m_byGrids[iX, iY] & (1 << ((int)EDir.Max + 1)));
+        return 0 != (m_ushGrids[iX, iY] & (1 << (int)EDir.Max));
     }
 
     public void SetEmpty(int iX, int iY)
     {
-        m_byGrids[iX, iY] |= (byte)(1 << ((int)EDir.Max + 1));
+        m_ushGrids[iX, iY] |= (ushort)(1 << (int)EDir.Max);
+    }
+
+    public int GetBombNumber()
+    {
+        int iNum = 0;
+        for (int i = 0; i < m_ushGrids.GetLength(0); ++i)
+        {
+            for (int j = 0; j < m_ushGrids.GetLength(1); ++j)
+            {
+                if (HasBomb(i, j))
+                {
+                    ++iNum;
+                }
+            }
+        }
+        return iNum;
     }
 
     #region Generate Puzzle
@@ -86,9 +122,9 @@ public class CPuzzle
     {
         List<int> possibleX = new List<int>();
         List<int> possibleY = new List<int>();
-        for (int i = 0; i < m_byGrids.GetLength(0); ++i)
+        for (int i = 0; i < m_ushGrids.GetLength(0); ++i)
         {
-            for (int j = 0; j < m_byGrids.GetLength(1); ++j)
+            for (int j = 0; j < m_ushGrids.GetLength(1); ++j)
             {
                 possibleX.Add(i);
                 possibleY.Add(j);
@@ -112,9 +148,9 @@ public class CPuzzle
     public void AddLines()
     {
         List<CLines> lines = new List<CLines>();
-        for (int i = 0; i < m_byGrids.GetLength(0); ++i)
+        for (int i = 0; i < m_ushGrids.GetLength(0); ++i)
         {
-            for (int j = 0; j < m_byGrids.GetLength(1); ++j)
+            for (int j = 0; j < m_ushGrids.GetLength(1); ++j)
             {
                 if (!IsEmpty(i, j))
                 {
@@ -174,7 +210,40 @@ public class CPuzzle
                 }
             }
         }
-        m_pLines = lines.ToArray();        
+        m_pLines = lines.ToArray();
+
+        //========================================
+        //we have lines, we can check nodes without lines
+        for (int i = 0; i < m_ushGrids.GetLength(0); ++i)
+        {
+            for (int j = 0; j < m_ushGrids.GetLength(1); ++j)
+            {
+                if (!IsEmpty(i, j))
+                {
+                    bool bHasMe = false;
+                    for (int k = 0; k < m_pLines.Length; ++k)
+                    {
+                        for (int l = 0; l < m_pLines[k].m_iNodeXs.Count; ++l)
+                        {
+                            if (m_pLines[k].m_iNodeXs[l] == i
+                             && m_pLines[k].m_iNodeYs[l] == j)
+                            {
+                                bHasMe = true;
+                                break;
+                            }
+                        }
+                        if (bHasMe)
+                        {
+                            break;
+                        }
+                    }
+                    if (!bHasMe)
+                    {
+                        SetEmpty(i, j);
+                    }
+                }
+            }
+        }
     }
 
     public void PutBombs(int iBombNumber)
@@ -189,12 +258,35 @@ public class CPuzzle
                 m_bValid = false;
                 break;
             }
-            int iX = Random.Range(0, m_byGrids.GetLength(0));
-            int iY = Random.Range(0, m_byGrids.GetLength(1));
+            int iX = Random.Range(0, m_ushGrids.GetLength(0));
+            int iY = Random.Range(0, m_ushGrids.GetLength(1));
             if (!HasBomb(iX, iY) && !IsEmpty(iX, iY))
             {
-                PutBomb(iX, iY);
-                --iBombNumber;
+                int iHead = 0;
+                int iLine = 0;
+                for (int i = 0; i < m_pLines.Length; ++i)
+                {
+                    if (iX == m_pLines[i].m_iStartX && iY == m_pLines[i].m_iStartY)
+                    {
+                        ++iHead;
+                    }
+                    else if (iX == m_pLines[i].m_iEndX && iY == m_pLines[i].m_iEndY)
+                    {
+                        ++iHead;
+                    }
+                    for (int j = 0; j < m_pLines[i].m_iNodeXs.Count; ++j)
+                    {
+                        if (iX == m_pLines[i].m_iNodeXs[j] && iY == m_pLines[i].m_iNodeYs[j])
+                        {
+                            ++iLine;
+                        }
+                    }
+                }
+                if (1 != iHead || 1 != iLine)
+                {
+                    PutBomb(iX, iY);
+                    --iBombNumber;                    
+                }
             }
         }
     }
@@ -211,8 +303,8 @@ public class CPuzzle
                 m_bValid = false;
                 break;
             }
-            int iX = Random.Range(0, m_byGrids.GetLength(0));
-            int iY = Random.Range(0, m_byGrids.GetLength(1));
+            int iX = Random.Range(0, m_ushGrids.GetLength(0));
+            int iY = Random.Range(0, m_ushGrids.GetLength(1));
             List<int> walls = new List<int>
             {
                 (int) EDir.Left,
@@ -248,8 +340,53 @@ public class CPuzzle
             if (walls.Count > 1)
             {
                 int iWall = walls[Random.Range(0, walls.Count)];
-                m_byGrids[iX, iY] = (byte)(m_byGrids[iX, iY] | (1 << iWall));
+                m_ushGrids[iX, iY] = (ushort)(m_ushGrids[iX, iY] | (1 << iWall));
                 --iWallNumber;
+            }
+        }
+    }
+
+    public void PutGhostBomb(int iGhostBombNumber)
+    {
+        int iMaxTry = 200;
+        while (iGhostBombNumber > 0 && iMaxTry > 0)
+        {
+            --iMaxTry;
+            if (0 == iMaxTry)
+            {
+                Debug.LogWarning("Wrong Puzzle 1!");
+                m_bValid = false;
+                break;
+            }
+            int iX = Random.Range(0, m_ushGrids.GetLength(0));
+            int iY = Random.Range(0, m_ushGrids.GetLength(1));
+            if (!HasBomb(iX, iY) && !IsEmpty(iX, iY))
+            {
+                int iHead = 0;
+                int iLine = 0;
+                for (int i = 0; i < m_pLines.Length; ++i)
+                {
+                    if (iX == m_pLines[i].m_iStartX && iY == m_pLines[i].m_iStartY)
+                    {
+                        ++iHead;
+                    }
+                    else if (iX == m_pLines[i].m_iEndX && iY == m_pLines[i].m_iEndY)
+                    {
+                        ++iHead;
+                    }
+                    for (int j = 0; j < m_pLines[i].m_iNodeXs.Count; ++j)
+                    {
+                        if (iX == m_pLines[i].m_iNodeXs[j] && iY == m_pLines[i].m_iNodeYs[j])
+                        {
+                            ++iLine;
+                        }
+                    }
+                }
+                if (1 != iHead || 1 != iLine)
+                {
+                    PutGhostBomb(iX, iY);
+                    --iGhostBombNumber;
+                }
             }
         }
     }
@@ -266,7 +403,10 @@ public enum EDir
     Left,
     Up,
 
-    Max,
+    Max, //6
+
+    Bomb,
+    GhostBomb,
 }
 
 public class PuzzleCreator 
@@ -289,7 +429,7 @@ public class PuzzleCreator
     static public CPuzzle CreatePuzzle(int iWidth, int iHeight, int iWallNumber, int iEmptyNumber)
     {
         CPuzzle ret = new CPuzzle();
-        ret.m_byGrids = new byte[iWidth, iHeight];
+        ret.m_ushGrids = new ushort[iWidth, iHeight];
         ret.PutEmptys(iEmptyNumber);
         ret.PutWalls(iWallNumber);
         ret.AddLines();
