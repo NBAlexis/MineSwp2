@@ -149,7 +149,7 @@ public class CPuzzle
         {
             return eDir == EDir.LD || eDir == EDir.Down;
         }
-        if (iY > m_ushGrids.GetLength(0) - 1)
+        if (iY > m_ushGrids.GetLength(1) - 1)
         {
             return eDir == EDir.RU || eDir == EDir.Up;
         }

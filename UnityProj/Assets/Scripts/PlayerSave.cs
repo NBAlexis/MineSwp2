@@ -14,8 +14,8 @@ public class PlayerSave
             return;
         }
         m_bInitialed = true;
-        m_bLevelPassed = new bool[64];
-        for (int i = 0; i < 64; ++i)
+        m_bLevelPassed = new bool[CConst.LevelCount];
+        for (int i = 0; i < CConst.LevelCount; ++i)
         {
             m_bLevelPassed[i] = (1 == PlayerPrefs.GetInt("LVP_" + (i + 1), 0));
         }
@@ -23,7 +23,7 @@ public class PlayerSave
 
     public static void Save()
     {
-        for (int i = 0; i < 64; ++i)
+        for (int i = 0; i < CConst.LevelCount; ++i)
         {
             PlayerPrefs.SetInt("LVP_" + (i + 1), m_bLevelPassed[i] ? 1 : 0);
         }

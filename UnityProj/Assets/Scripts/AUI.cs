@@ -52,14 +52,19 @@ public class AUI : MonoBehaviour
     }
 	
 	// Update is called once per frame
-	void Update () {
-
+	void Update () 
+    {
+	    if (m_pPages[(int) EPage.EP_Game].activeSelf && 0 == m_iCurrentLevel)
+	    {
+	        TickTraining(Time.deltaTime);
+	    }
     }
 
     #region Start
 
     public void OnQuitButton()
     {
+        ASound.Sound.PlayUISound(EUISound.EUS_Press);
         ShowDialog("Do you want to quit?", OnRealQuit);
     }
 
@@ -70,6 +75,7 @@ public class AUI : MonoBehaviour
 
     public void OnChooseLevelButton()
     {
+        ASound.Sound.PlayUISound(EUISound.EUS_Press);
         m_pPages[(int)EPage.EP_Start].SetActive(false);
         m_pPages[(int)EPage.EP_Choose].SetActive(true);
         m_pPages[(int)EPage.EP_Game].SetActive(false);
@@ -78,7 +84,14 @@ public class AUI : MonoBehaviour
 
     public void OnStartGameButton()
     {
-        GoLevel(65);
+        ASound.Sound.PlayUISound(EUISound.EUS_Press);
+        GoLevel(CConst.LevelCount + 1);
+    }
+
+    public void OnTrainingButton()
+    {
+        ASound.Sound.PlayUISound(EUISound.EUS_Press);
+        GoLevel(0);
     }
 
     #endregion
@@ -91,16 +104,88 @@ public class AUI : MonoBehaviour
         m_iCurrentLevel = iLevel;
         if (0 == iLevel)
         {
-            
+            CPuzzle npz = new CPuzzle();
+            npz.m_ushGrids = new ushort[5,5];
+            npz.SetEmpty(0, 0); npz.SetEmpty(0, 4);
+            npz.SetEmpty(1, 0); npz.SetEmpty(1, 4);
+            npz.SetEmpty(2, 0); npz.SetEmpty(2, 4);
+            npz.SetEmpty(3, 0); npz.SetEmpty(3, 4);
+            npz.SetEmpty(4, 0); npz.SetEmpty(4, 4);
+
+            npz.SetEmpty(0, 1); npz.SetEmpty(0, 3);
+            npz.SetEmpty(1, 1); npz.SetEmpty(1, 3);
+            npz.SetEmpty(2, 1); npz.SetEmpty(2, 3);
+            npz.SetEmpty(4, 1); npz.SetEmpty(4, 3);
+
+            npz.PutBomb(3, 1);
+            npz.PutBomb(1, 2);
+            npz.PutBomb(3, 2);
+
+            npz.m_ushGrids[3, 3] |= (1 << (int)EDir.RU);
+
+            npz.m_pLines = new CLines[4];
+            npz.m_pLines[0] = new CLines
+            {
+                m_eType = ELineType.ELT_Normal,
+                m_iStartX = 0,
+                m_iStartY = 2,
+                m_iEndX = 4,
+                m_iEndY = 2,
+            };
+            npz.m_pLines[0].m_iNodeXs = new List<int>();npz.m_pLines[0].m_iNodeYs = new List<int>();
+            npz.m_pLines[0].m_iNodeXs.Add(0); npz.m_pLines[0].m_iNodeYs.Add(2);
+            npz.m_pLines[0].m_iNodeXs.Add(1); npz.m_pLines[0].m_iNodeYs.Add(2);
+            npz.m_pLines[0].m_iNodeXs.Add(2); npz.m_pLines[0].m_iNodeYs.Add(2);
+            npz.m_pLines[0].m_iNodeXs.Add(3); npz.m_pLines[0].m_iNodeYs.Add(2);
+            npz.m_pLines[0].m_iNodeXs.Add(4); npz.m_pLines[0].m_iNodeYs.Add(2);
+
+            npz.m_pLines[1] = new CLines
+            {
+                m_eType = ELineType.ELT_Normal,
+                m_iStartX = 3,
+                m_iStartY = 1,
+                m_iEndX = 3,
+                m_iEndY = 3,
+            };
+            npz.m_pLines[1].m_iNodeXs = new List<int>(); npz.m_pLines[1].m_iNodeYs = new List<int>();
+            npz.m_pLines[1].m_iNodeXs.Add(3); npz.m_pLines[1].m_iNodeYs.Add(1);
+            npz.m_pLines[1].m_iNodeXs.Add(3); npz.m_pLines[1].m_iNodeYs.Add(2);
+            npz.m_pLines[1].m_iNodeXs.Add(3); npz.m_pLines[1].m_iNodeYs.Add(3);
+
+            npz.m_pLines[2] = new CLines
+            {
+                m_eType = ELineType.ELT_Normal,
+                m_iStartX = 3,
+                m_iStartY = 1,
+                m_iEndX = 2,
+                m_iEndY = 2,
+            };
+            npz.m_pLines[2].m_iNodeXs = new List<int>(); npz.m_pLines[2].m_iNodeYs = new List<int>();
+            npz.m_pLines[2].m_iNodeXs.Add(3); npz.m_pLines[2].m_iNodeYs.Add(1);
+            npz.m_pLines[2].m_iNodeXs.Add(2); npz.m_pLines[2].m_iNodeYs.Add(2);
+
+            npz.m_pLines[3] = new CLines
+            {
+                m_eType = ELineType.ELT_Normal,
+                m_iStartX = 3,
+                m_iStartY = 3,
+                m_iEndX = 2,
+                m_iEndY = 2,
+            };
+            npz.m_pLines[3].m_iNodeXs = new List<int>(); npz.m_pLines[3].m_iNodeYs = new List<int>();
+            npz.m_pLines[3].m_iNodeXs.Add(3); npz.m_pLines[3].m_iNodeYs.Add(3);
+            npz.m_pLines[3].m_iNodeXs.Add(2); npz.m_pLines[3].m_iNodeYs.Add(2);
+
+            GoPuzzle(npz);
         }
-        else if (iLevel > 0 && iLevel <= 64)
+        else if (iLevel > 0 && iLevel <= CConst.LevelCount)
         {
             byte[] data = Resources.Load<TextAsset>("puzzle_" + iLevel).bytes;
             CPuzzle pz = new CPuzzle();
             pz.FromByteArray(data);
             GoPuzzle(pz);
         }
-        else if (iLevel > 64)
+        else if (iLevel > CConst.LevelCount)
         {
             StartRandomLevel();
         }
@@ -188,6 +273,10 @@ public class AUI : MonoBehaviour
         m_pPages[(int)EPage.EP_Game].SetActive(true);
         m_bOver = false;
         HideResoult();
+        if (0 == m_iCurrentLevel)
+        {
+            OnEnterTraining();
+        }
     }
 
     public GameObject m_pLevelBtPrefab;
@@ -207,12 +296,60 @@ public class AUI : MonoBehaviour
             }
         }
 
+        m_pLevelBts = new GameObject[CConst.LevelCount];
+        for (int i = 0; i < CConst.LevelCount; ++i)
+        {
+            m_pLevelBts[i] = Instantiate(m_pLevelBtPrefab, m_pLevelBtPrefab.transform.parent);
+            int iX = i % 12;
+            int iY = i / 12;
+            m_pLevelBts[i].transform.localPosition = new Vector3((iX - 5.5f) * 60.0f, (3.5f - iY) * 60.0f, 0.0f);
+            m_pLevelBts[i].name = "Level" + (i + 1);
+            m_pLevelBts[i].GetComponentInChildren<Text>().text = (i + 1).ToString();
 
+            if (0 == i || PlayerSave.m_bLevelPassed[i - 1])
+            {
+                if (PlayerSave.m_bLevelPassed[i])
+                {
+                    m_pLevelBts[i].GetComponent<Image>().color = m_pColorToggled;
+                }
+                else
+                {
+                    m_pLevelBts[i].GetComponent<Image>().color = m_pColorUnToggled;
+                }
+            }
+            else
+            {
+                m_pLevelBts[i].GetComponent<Image>().color = m_pColorUseOut;
+            }
+        }
     }
 
     public void OnPressChooseLevelButton(GameObject bt)
     {
-        
+        for (int i = 0; i < CConst.LevelCount; ++i)
+        {
+            if (bt.name.Equals("Level" + (i + 1)))
+            {
+                if (0 == i || PlayerSave.m_bLevelPassed[i - 1])
+                {
+                    ASound.Sound.PlayUISound(EUISound.EUS_Press);
+                    GoLevel(i + 1);
+                    return;
+                }
+                else
+                {
+                    ASound.Sound.PlayUISound(EUISound.EUS_Error);
+                }
+            }
+        }
+    }
+
+    public void OnChooseLevelBack()
+    {
+        ASound.Sound.PlayUISound(EUISound.EUS_Press);
+        m_pPages[(int)EPage.EP_Start].SetActive(true);
+        m_pPages[(int)EPage.EP_Choose].SetActive(false);
+        m_pPages[(int)EPage.EP_Game].SetActive(false);
     }
 
     #endregion
@@ -362,6 +499,8 @@ public class AUI : MonoBehaviour
         m_iMouseCount = puzzle.m_iMouseNumber;
         m_ePressNow = EPressType.EPT_Dig;
         FinishDig();
+
+        m_pTrainingText.enabled = (0 == m_iCurrentLevel);
     }
 
     private void OnTagMine(int iX, int iY)
@@ -371,6 +510,7 @@ public class AUI : MonoBehaviour
             return;
         }
 
+        ASound.Sound.PlayUISound(EUISound.EUS_Tag);
         bool[] bWall =
         {
             m_pGrids[iX, iY].m_pWalls[0].enabled,
@@ -416,6 +556,7 @@ public class AUI : MonoBehaviour
             ShowAllBombs();
             m_bOver = true;
             ShowResoult(false);
+            ASound.Sound.PlayUISound(EUISound.EUS_Explode);
             return;
         }
 
@@ -591,16 +732,32 @@ public class AUI : MonoBehaviour
             return;
         }
 
+        for (int i = 0; i < m_pGrids.GetLength(0); ++i)
+        {
+            for (int j = 0; j < m_pGrids.GetLength(1); ++j)
+            {
+                if (!m_pGrids[i, j].IsReady())
+                {
+                    return;
+                }
+            }            
+        }
+
+
         m_iOpenIndex = 0;
         switch (eType)
         {
             case EPressType.EPT_Tag:
                 if (EGridState.EGS_Close == m_pGrids[iX, iY].GetState()
-                 || EGridState.EGS_CloseFrozen == m_pGrids[iX, iY].GetState()
-                 || EGridState.EGS_Tag == m_pGrids[iX, iY].GetState())
+                    || EGridState.EGS_CloseFrozen == m_pGrids[iX, iY].GetState()
+                    || EGridState.EGS_Tag == m_pGrids[iX, iY].GetState())
                 {
                     OnTagMine(iX, iY);
                     FinishDig();
+                }
+                else
+                {
+                    ASound.Sound.PlayUISound(EUISound.EUS_Error);
                 }
                 break;
             case EPressType.EPT_Dig:
@@ -610,13 +767,17 @@ public class AUI : MonoBehaviour
                     OnDig(iX, iY, false);
                     FinishDig();
                 }
+                else
+                {
+                    ASound.Sound.PlayUISound(EUISound.EUS_Error);
+                }
                 break;
             case EPressType.EPT_GoldenDig:
-                if (EGridState.EGS_Close == m_pGrids[iX, iY].GetState()
-                 || EGridState.EGS_CloseSafe == m_pGrids[iX, iY].GetState()
-                 || EGridState.EGS_CloseFrozen == m_pGrids[iX, iY].GetState())
+                if (m_iGoldenDigCount > 0)
                 {
-                    if (m_iGoldenDigCount > 0)
+                    if (EGridState.EGS_Close == m_pGrids[iX, iY].GetState()
+                        || EGridState.EGS_CloseSafe == m_pGrids[iX, iY].GetState()
+                        || EGridState.EGS_CloseFrozen == m_pGrids[iX, iY].GetState())
                     {
                         if (m_pPuzzle.HasBomb(iX, iY))
                         {
@@ -628,6 +789,11 @@ public class AUI : MonoBehaviour
                         --m_iGoldenDigCount;
                         FinishDig();
                     }
+                    else
+                    {
+                        ASound.Sound.PlayUISound(EUISound.EUS_Error);
+                    }
+
                 }
                 break;
             case EPressType.EPT_Mouse:
@@ -640,6 +806,10 @@ public class AUI : MonoBehaviour
                         OnMouseDig(iX, iY);
                         FinishDig();
                     }
+                    else
+                    {
+                        ASound.Sound.PlayUISound(EUISound.EUS_Error);
+                    }
                 }
                 break;
         }
@@ -647,6 +817,7 @@ public class AUI : MonoBehaviour
 
     public void OnGameRefreshButton()
     {
+        ASound.Sound.PlayUISound(EUISound.EUS_Press);
         ShowDialog("Do you want to restart?", OnRealGameRefreshButton);
     }
 
@@ -657,12 +828,13 @@ public class AUI : MonoBehaviour
 
     public void OnGameQuitButton()
     {
+        ASound.Sound.PlayUISound(EUISound.EUS_Press);
         ShowDialog("Do you want to quit?", OnRealGameQuitButton);
     }
 
     private void OnRealGameQuitButton()
     {
-        if (m_iCurrentLevel >= 1 && m_iCurrentLevel <= 64)
+        if (m_iCurrentLevel >= 1 && m_iCurrentLevel <= CConst.LevelCount)
         {
             m_pPages[(int)EPage.EP_Start].SetActive(false);
             m_pPages[(int)EPage.EP_Choose].SetActive(true);
@@ -751,12 +923,14 @@ public class AUI : MonoBehaviour
 
     public void OnGameB1()
     {
+        ASound.Sound.PlayUISound(EUISound.EUS_Press);
         m_ePressNow = EPressType.EPT_Dig;
         SetButtonColors();
     }
 
     public void OnGameB2()
     {
+        ASound.Sound.PlayUISound(EUISound.EUS_Press);
         m_ePressNow = EPressType.EPT_Tag;
         SetButtonColors();
     }
@@ -765,8 +939,13 @@ public class AUI : MonoBehaviour
     {
         if (m_iGoldenDigCount > 0)
         {
+            ASound.Sound.PlayUISound(EUISound.EUS_Press);
             m_ePressNow = EPressType.EPT_GoldenDig;
-            SetButtonColors();            
+            SetButtonColors();
+        }
+        else
+        {
+            ASound.Sound.PlayUISound(EUISound.EUS_Error);
         }
     }
 
@@ -774,8 +953,13 @@ public class AUI : MonoBehaviour
     {
         if (m_iMouseCount > 0)
         {
+            ASound.Sound.PlayUISound(EUISound.EUS_Press);
             m_ePressNow = EPressType.EPT_Mouse;
-            SetButtonColors();            
+            SetButtonColors();
+        }
+        else
+        {
+            ASound.Sound.PlayUISound(EUISound.EUS_Error);
         }
     }
 
@@ -959,16 +1143,17 @@ public class AUI : MonoBehaviour
 
     public void ShowResoult(bool bWin)
     {
-        if (bWin && m_iCurrentLevel >= 1 && m_iCurrentLevel <= 64)
+        if (bWin && m_iCurrentLevel >= 1 && m_iCurrentLevel <= CConst.LevelCount)
         {
             PlayerSave.m_bLevelPassed[m_iCurrentLevel - 1] = true;
             PlayerSave.Save();
         }
+        //ASound.Sound.PlayUISound(bWin ? EUISound.EUS_Win : EUISound.EUS_Lose);
 
         m_pResoultBg.enabled = true;
         m_pRes.enabled = true;
         m_pRes.text = bWin ? "<color=#00FFFF>You Win!</color>" : "<color=#FF0000>You Lose!</color>";
-        if (bWin && m_iCurrentLevel >= 1 && m_iCurrentLevel < 64)
+        if (bWin && m_iCurrentLevel >= 1 && m_iCurrentLevel < CConst.LevelCount)
         {
             m_pResoultButtons[0].transform.localPosition = new Vector3(-80.0F, -120.0F, 0.0F);
             m_pResoultButtons[1].transform.localPosition = new Vector3(0.0F, -120.0F, 0.0F);
@@ -1007,7 +1192,8 @@ public class AUI : MonoBehaviour
 
     public void OnResoultDialogQuit()
     {
-        if (m_iCurrentLevel >= 1 && m_iCurrentLevel <= 64)
+        ASound.Sound.PlayUISound(EUISound.EUS_Press);
+        if (m_iCurrentLevel >= 1 && m_iCurrentLevel <= CConst.LevelCount)
         {
             m_pPages[(int)EPage.EP_Start].SetActive(false);
             m_pPages[(int)EPage.EP_Choose].SetActive(true);
@@ -1024,12 +1210,274 @@ public class AUI : MonoBehaviour
 
     public void OnResoultDialogRestart()
     {
+        ASound.Sound.PlayUISound(EUISound.EUS_Press);
         GoLevel(m_iCurrentLevel);
     }
 
     public void OnResoultDialogNext()
     {
+        ASound.Sound.PlayUISound(EUISound.EUS_Press);
         GoLevel(m_iCurrentLevel + 1);
+    }
+
+    #endregion
+
+    #region Training
+
+    public Text m_pTrainingText;
+    private List<Text> m_pLineHighLightTexts;
+    private List<List<Image>> m_pLineHighLightImages;
+    private List<List<Color>> m_pLineHighLightImageColors;
+    private float m_fTraningTimer = 0.0f;
+    public void OnEnterTraining()
+    {
+        m_pGrids[0, 2].SetGridState(EGridState.EGS_OpenNoBomb, EPressType.EPT_Max);
+        m_pGrids[0, 2].SetNumber(new[] { bombNum[0], bombNum[2], bombNum[0], bombNum[0], bombNum[0], bombNum[0] });
+        m_pGrids[2, 2].SetGridState(EGridState.EGS_OpenNoBomb, EPressType.EPT_Max);
+        m_pGrids[2, 2].SetNumber(new[] { bombNum[1], bombNum[1], bombNum[0], bombNum[0], bombNum[1], bombNum[0] });
+        m_pGrids[3, 3].SetGridState(EGridState.EGS_OpenNoBomb, EPressType.EPT_Max);
+        m_pGrids[3, 3].SetNumber(new[] { bombNum[0], bombNum[0], bombNum[0], bombNum[0], bombNum[0], bombNum[2] });
+
+        m_pGrids[4, 2].SetGridState(EGridState.EGS_Close, EPressType.EPT_Max);
+
+        m_pLineHighLightTexts = new List<Text>();
+        m_pLineHighLightImages = new List<List<Image>>();
+        m_pLineHighLightImageColors = new List<List<Color>>();
+
+        //===============================================
+        //line 1
+        m_pLineHighLightTexts.Add(m_pGrids[2, 2].m_pNumbers[(int)EDir.RU]);
+        List<Image> img1 = new List<Image>();
+        List<Color> color1 = new List<Color>();
+
+        img1.Add(m_pGrids[3, 1].GetComponent<Image>());
+        Color c11 = m_pGrids[3, 1].GetComponent<Image>().color; 
+        color1.Add(c11);
+        color1.Add(new Color(c11.r, c11.g, c11.b, 0.5f));
+        m_pGrids[3, 1].m_pBomb.enabled = true;
+        m_pGrids[3, 1].m_pBomb.color = new Color(1.0f, 1.0f, 1.0f, 0.0f);
+        img1.Add(m_pGrids[3, 1].m_pBomb);
+        color1.Add(new Color(1.0f, 1.0f, 1.0f, 0.0f));
+        color1.Add(new Color(1.0f, 1.0f, 1.0f, 0.5f));
+        m_pLineHighLightImages.Add(img1);
+        m_pLineHighLightImageColors.Add(color1);
+
+        //===============================================
+        //line 2
+        m_pLineHighLightTexts.Add(m_pGrids[0, 2].m_pNumbers[(int)EDir.Right]);
+        List<Image> img2 = new List<Image>();
+        List<Color> color2 = new List<Color>();
+
+        img2.Add(m_pGrids[1, 2].GetComponent<Image>());
+        Color c21 = m_pGrids[1, 2].GetComponent<Image>().color;
+        color2.Add(c21);
+        color2.Add(new Color(c21.r, c21.g, c21.b, 0.5f));
+
+        img2.Add(m_pGrids[3, 2].GetComponent<Image>());
+        Color c22 = m_pGrids[3, 2].GetComponent<Image>().color;
+        color2.Add(c22);
+        color2.Add(new Color(c22.r, c22.g, c22.b, 0.5f));
+
+        img2.Add(m_pGrids[4, 2].GetComponent<Image>());
+        Color c23 = m_pGrids[4, 2].GetComponent<Image>().color;
+        color2.Add(c23);
+        color2.Add(new Color(c23.r, c23.g, c23.b, 0.5f));
+
+        img2.Add(m_pGrids[2, 2].GetComponent<Image>());
+        Color c24 = m_pGrids[2, 2].GetComponent<Image>().color;
+        color2.Add(c24);
+        color2.Add(new Color(c24.r, c24.g, c24.b, 0.5f));
+
+        m_pGrids[1, 2].m_pBomb.enabled = true;
+        m_pGrids[1, 2].m_pBomb.color = new Color(1.0f, 1.0f, 1.0f, 0.0f);
+        img2.Add(m_pGrids[1, 2].m_pBomb);
+        color2.Add(new Color(1.0f, 1.0f, 1.0f, 0.0f));
+        color2.Add(new Color(1.0f, 1.0f, 1.0f, 0.5f));
+
+        m_pGrids[3, 2].m_pBomb.enabled = true;
+        m_pGrids[3, 2].m_pBomb.color = new Color(1.0f, 1.0f, 1.0f, 0.0f);
+        img2.Add(m_pGrids[3, 2].m_pBomb);
+        color2.Add(new Color(1.0f, 1.0f, 1.0f, 0.0f));
+        color2.Add(new Color(1.0f, 1.0f, 1.0f, 0.5f));
+
+        m_pLineHighLightImages.Add(img2);
+        m_pLineHighLightImageColors.Add(color2);
+
+        //===============================================
+        //line 3
+        m_pLineHighLightTexts.Add(m_pGrids[2, 2].m_pNumbers[(int)EDir.Right]);
+        List<Image> img3 = new List<Image>();
+        List<Color> color3 = new List<Color>();
+        img3.Add(m_pGrids[3, 2].GetComponent<Image>());
+        Color c31 = m_pGrids[3, 2].GetComponent<Image>().color;
+        color3.Add(c31);
+        color3.Add(new Color(c31.r, c31.g, c31.b, 0.5f));
+
+        img3.Add(m_pGrids[4, 2].GetComponent<Image>());
+        Color c32 = m_pGrids[4, 2].GetComponent<Image>().color;
+        color3.Add(c32);
+        color3.Add(new Color(c32.r, c32.g, c32.b, 0.5f));
+
+        m_pGrids[3, 2].m_pBomb.enabled = true;
+        m_pGrids[3, 2].m_pBomb.color = new Color(1.0f, 1.0f, 1.0f, 0.0f);
+        img3.Add(m_pGrids[3, 2].m_pBomb);
+        color3.Add(new Color(1.0f, 1.0f, 1.0f, 0.0f));
+        color3.Add(new Color(1.0f, 1.0f, 1.0f, 0.5f));
+
+        m_pLineHighLightImages.Add(img3);
+        m_pLineHighLightImageColors.Add(color3);
+
+        //===============================================
+        //line 4
+        m_pLineHighLightTexts.Add(m_pGrids[3, 3].m_pNumbers[(int)EDir.Up]);
+        List<Image> img4 = new List<Image>();
+        List<Color> color4 = new List<Color>();
+        img4.Add(m_pGrids[3, 1].GetComponent<Image>());
+        Color c41 = m_pGrids[3, 1].GetComponent<Image>().color;
+        color4.Add(c41);
+        color4.Add(new Color(c41.r, c41.g, c41.b, 0.5f));
+
+        img4.Add(m_pGrids[3, 2].GetComponent<Image>());
+        Color c42 = m_pGrids[3, 2].GetComponent<Image>().color;
+        color4.Add(c42);
+        color4.Add(new Color(c42.r, c42.g, c42.b, 0.5f));
+
+        m_pGrids[3, 1].m_pBomb.enabled = true;
+        m_pGrids[3, 1].m_pBomb.color = new Color(1.0f, 1.0f, 1.0f, 0.0f);
+        img4.Add(m_pGrids[3, 1].m_pBomb);
+        color4.Add(new Color(1.0f, 1.0f, 1.0f, 0.0f));
+        color4.Add(new Color(1.0f, 1.0f, 1.0f, 0.5f));
+
+        m_pGrids[3, 2].m_pBomb.enabled = true;
+        m_pGrids[3, 2].m_pBomb.color = new Color(1.0f, 1.0f, 1.0f, 0.0f);
+        img4.Add(m_pGrids[3, 2].m_pBomb);
+        color4.Add(new Color(1.0f, 1.0f, 1.0f, 0.0f));
+        color4.Add(new Color(1.0f, 1.0f, 1.0f, 0.5f));
+
+        m_pLineHighLightImages.Add(img4);
+        m_pLineHighLightImageColors.Add(color4);
+
+        //===============================================
+        //line 5
+        m_pLineHighLightTexts.Add(m_pGrids[2, 2].m_pNumbers[(int)EDir.Left]);
+        List<Image> img5 = new List<Image>();
+        List<Color> color5 = new List<Color>();
+        img5.Add(m_pGrids[1, 2].GetComponent<Image>());
+        Color c51 = m_pGrids[1, 2].GetComponent<Image>().color;
+        color5.Add(c51);
+        color5.Add(new Color(c51.r, c51.g, c51.b, 0.5f));
+
+        img5.Add(m_pGrids[0, 2].GetComponent<Image>());
+        Color c52 = m_pGrids[0, 2].GetComponent<Image>().color;
+        color5.Add(c52);
+        color5.Add(new Color(c52.r, c52.g, c52.b, 0.5f));
+
+        m_pGrids[1, 2].m_pBomb.enabled = true;
+        m_pGrids[1, 2].m_pBomb.color = new Color(1.0f, 1.0f, 1.0f, 0.0f);
+        img5.Add(m_pGrids[1, 2].m_pBomb);
+        color5.Add(new Color(1.0f, 1.0f, 1.0f, 0.0f));
+        color5.Add(new Color(1.0f, 1.0f, 1.0f, 0.5f));
+
+        m_pLineHighLightImages.Add(img5);
+        m_pLineHighLightImageColors.Add(color5);
+    }
+
+    public void TickTraining(float fDeltaTime)
+    {
+        m_fTraningTimer += fDeltaTime;
+        if (m_fTraningTimer > 10.0f)
+        {
+            m_fTraningTimer = 0.0f;
+        }
+        int iStage = 0;
+        float fRate = 0.0f;
+        if (m_fTraningTimer < 2.0f)
+        {
+            iStage = 0;
+            fRate = Mathf.Clamp01(1.0f - Mathf.Abs(m_fTraningTimer - 1.0f));
+        }
+        else if (m_fTraningTimer < 4.0f)
+        {
+            iStage = 1;
+            fRate = Mathf.Clamp01(1.0f - Mathf.Abs(m_fTraningTimer - 3.0f));            
+        }
+        else if (m_fTraningTimer < 6.0f)
+        {
+            iStage = 2;
+            fRate = Mathf.Clamp01(1.0f - Mathf.Abs(m_fTraningTimer - 5.0f));
+        }
+        else if (m_fTraningTimer < 8.0f)
+        {
+            iStage = 3;
+            fRate = Mathf.Clamp01(1.0f - Mathf.Abs(m_fTraningTimer - 7.0f));
+        }
+        else
+        {
+            iStage = 4;
+            fRate = Mathf.Clamp01(1.0f - Mathf.Abs(m_fTraningTimer - 9.0f));
+        }
+
+        for (int i = 0; i < 5; ++i)
+        {
+            if (i != iStage)
+            {
+                float fRealRate = 0.0f;
+                m_pLineHighLightTexts[i].transform.localScale = new Vector3(
+                    1.0f + fRealRate * 0.6f, 
+                    1.0f + fRealRate * 0.6f, 
+                    1.0f + fRealRate * 0.6f);
+                m_pLineHighLightTexts[i].color = (1.0f - fRealRate)*Color.white + fRealRate*Color.yellow;
+                if (m_pLineHighLightTexts[i].text.Equals("1") 
+                 || m_pLineHighLightTexts[i].text.Equals(bombNum[1]))
+                {
+                    m_pLineHighLightTexts[i].text = bombNum[1];
+                }
+
+                if (m_pLineHighLightTexts[i].text.Equals("2")
+                 || m_pLineHighLightTexts[i].text.Equals(bombNum[2]))
+                {
+                    m_pLineHighLightTexts[i].text = bombNum[2];
+                }
+
+                for (int j = 0; j < m_pLineHighLightImages[i].Count; ++j)
+                {
+                    m_pLineHighLightImages[i][j].color = (1.0F - fRealRate) * m_pLineHighLightImageColors[i][j * 2] +
+                                                         fRealRate * m_pLineHighLightImageColors[i][j * 2 + 1];
+                }
+            }
+        }
+
+        for (int i = 0; i < 5; ++i)
+        {
+            if (i == iStage)
+            {
+                float fRealRate = fRate;
+                m_pLineHighLightTexts[i].transform.localScale = new Vector3(
+                    1.0f + fRealRate * 0.6f,
+                    1.0f + fRealRate * 0.6f,
+                    1.0f + fRealRate * 0.6f);
+
+                m_pLineHighLightTexts[i].color = (1.0f - fRealRate) * Color.white + fRealRate * Color.yellow;
+                if (m_pLineHighLightTexts[i].text.Equals("1")
+                 || m_pLineHighLightTexts[i].text.Equals(bombNum[1]))
+                {
+                    m_pLineHighLightTexts[i].text = "1";
+                }
+
+                if (m_pLineHighLightTexts[i].text.Equals("2")
+                 || m_pLineHighLightTexts[i].text.Equals(bombNum[2]))
+                {
+                    m_pLineHighLightTexts[i].text = "2";
+                }
+
+                for (int j = 0; j < m_pLineHighLightImages[i].Count; ++j)
+                {
+                    m_pLineHighLightImages[i][j].enabled = true;
+                    m_pLineHighLightImages[i][j].color = (1.0F - fRealRate) * m_pLineHighLightImageColors[i][j * 2] +
+                                                         fRealRate * m_pLineHighLightImageColors[i][j * 2 + 1];
+                }
+            }
+        }
     }
 
     #endregion
@@ -1056,6 +1504,7 @@ public class AUI : MonoBehaviour
 
     public void DialogYes()
     {
+        ASound.Sound.PlayUISound(EUISound.EUS_Press);
         HideDialog();
         if (null != m_pYesAction)
         {
@@ -1065,6 +1514,7 @@ public class AUI : MonoBehaviour
 
     public void DialogNo()
     {
+        ASound.Sound.PlayUISound(EUISound.EUS_Press);
         HideDialog();
         if (null != m_pNoAction)
         {

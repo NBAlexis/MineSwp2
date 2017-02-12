@@ -26,7 +26,7 @@ public class APuzzleCreator : MonoBehaviour
 
     public void CreatePuzzleFunc()
     {
-        for (int i = 0; i < 64; ++i)
+        for (int i = 0; i < CConst.LevelCount; ++i)
         {
             int iMineNumber = CConst.TR_MineNumber;
             int iGhostMineNumber = CConst.TR_GhostMineNumber;
@@ -38,7 +38,13 @@ public class APuzzleCreator : MonoBehaviour
             int iGold = CConst.TR_Gold;
             int iMouse = CConst.TR_Mouse;
 
-            switch (i / 8)
+            int iChoose = i/8;
+            if (iChoose >= 8)
+            {
+                iChoose = Random.Range(3, 8);
+            }
+
+            switch (iChoose)
             {
                 case 0:
                     if (i >= 2)

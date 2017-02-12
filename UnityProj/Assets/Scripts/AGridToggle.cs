@@ -116,7 +116,11 @@ public class AGridToggle : MonoBehaviour
                 fScale = 1.5f;
                 break;
             case 7:
+                fScale = 1.3f;
+                break;
             case 8:
+                fScale = 1.1f;
+                break;
             case 9:
                 fScale = 1.0f;
                 break;
@@ -148,6 +152,11 @@ public class AGridToggle : MonoBehaviour
                 OnOpen();
             }
         }
+    }
+
+    public bool IsReady()
+    {
+        return m_fPlay < 0.0f;
     }
 
     public void SetOwner(AUI pOwner)
@@ -266,20 +275,25 @@ public class AGridToggle : MonoBehaviour
                 if (EGridState.EGS_CloseFrozen == m_eOldState)
                 {
                     PlayEffect(EGridEffect.EGE_FrozenLink);
+                    ASound.Sound.PlayEffectSound(EGridEffect.EGE_FrozenLink);
                 }
                 else
                 {
                     PlayEffect(EGridEffect.EGE_DigLink);
+                    ASound.Sound.PlayEffectSound(EGridEffect.EGE_DigLink);
                 }
                 break;
             case EPressType.EPT_GoldenDig: 
                 PlayEffect(EGridEffect.EGE_DigGolden);
+                ASound.Sound.PlayEffectSound(EGridEffect.EGE_DigGolden);
                 break;
             case EPressType.EPT_Mouse:
                 PlayEffect(EGridEffect.EGE_MouseLink);
+                ASound.Sound.PlayEffectSound(EGridEffect.EGE_MouseLink);
                 break;
             case EPressType.EPT_Dig:
                 PlayEffect(EGridEffect.EGE_Dig);
+                ASound.Sound.PlayEffectSound(EGridEffect.EGE_Dig);
                 break;
         }
     }

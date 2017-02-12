@@ -93,4 +93,6 @@ public class CConst
     public const int TR_TestHeight = 4;
     public const int TR_Gold = 2;
     public const int TR_Mouse = 0;
+
+    public const int LevelCount = 96;
 }
