@@ -137,7 +137,6 @@ public class AGridToggle : MonoBehaviour
         gameObject.name = "Grid_" + m_iX + "_" + m_iY;
     }
 
-
     public void Update()
     {
         if (m_fPlay > 0.0f)
@@ -281,6 +280,53 @@ public class AGridToggle : MonoBehaviour
                 break;
             case EPressType.EPT_Dig:
                 PlayEffect(EGridEffect.EGE_Dig);
+                break;
+        }
+    }
+
+    public void SetEdge(EPressType ept)
+    {
+        switch (ept)
+        {
+            case EPressType.EPT_Dig:
+                if (m_eState == EGridState.EGS_Close || m_eState == EGridState.EGS_CloseSafe)
+                {
+                    m_pButtonEdge.color = new Color(1.0f, 1.0f, 1.0f);
+                }
+                else
+                {
+                    m_pButtonEdge.color = new Color(0.5f, 0.5f, 0.5f);
+                }
+                break;
+            case EPressType.EPT_Tag:
+                if (m_eState == EGridState.EGS_Close || m_eState == EGridState.EGS_CloseFrozen || m_eState == EGridState.EGS_Tag)
+                {
+                    m_pButtonEdge.color = new Color(1.0f, 1.0f, 1.0f);
+                }
+                else
+                {
+                    m_pButtonEdge.color = new Color(0.5f, 0.5f, 0.5f);
+                }
+                break;
+            case EPressType.EPT_GoldenDig:
+                if (m_eState == EGridState.EGS_Close || m_eState == EGridState.EGS_CloseSafe || m_eState == EGridState.EGS_CloseFrozen)
+                {
+                    m_pButtonEdge.color = new Color(1.0f, 1.0f, 1.0f);
+                }
+                else
+                {
+                    m_pButtonEdge.color = new Color(0.5f, 0.5f, 0.5f);
+                }
+                break;
+            case EPressType.EPT_Mouse:
+                if (m_eState == EGridState.EGS_OpenNoBomb || m_eState == EGridState.EGS_OpenGhost)
+                {
+                    m_pButtonEdge.color = new Color(1.0f, 1.0f, 1.0f);
+                }
+                else
+                {
+                    m_pButtonEdge.color = new Color(0.5f, 0.5f, 0.5f);
+                }
                 break;
         }
     }

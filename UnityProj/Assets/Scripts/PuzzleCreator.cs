@@ -1,5 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
 
 public enum ELineType
@@ -18,7 +19,7 @@ public class CLines
     public List<int> m_iNodeXs;
     public List<int> m_iNodeYs;
 
-    public ELineType m_iType;
+    public ELineType m_eType = ELineType.ELT_Normal;
 }
 
 public class CPuzzle
@@ -26,6 +27,108 @@ public class CPuzzle
     public ushort[,] m_ushGrids;
     public CLines[] m_pLines;
     public bool m_bValid = true;
+
+    public int m_iGoldNumber = 0;
+    public int m_iMouseNumber = 0;
+    public int m_iBombNumber = 0;
+    public int m_iGhostBombNumber = 0;
+
+    public byte[] ToByteArray()
+    {
+        using (BinaryWriter brw = new BinaryWriter(new MemoryStream()))
+        {
+            brw.Write((byte)m_iGoldNumber);
+            brw.Write((byte)m_iMouseNumber);
+            brw.Write((byte)m_iBombNumber);
+            brw.Write((byte)m_iGhostBombNumber);
+            brw.Write((byte)m_ushGrids.GetLength(0));
+            brw.Write((byte)m_ushGrids.GetLength(1));
+            for (int i = 0; i < m_ushGrids.GetLength(0); ++i)
+            {
+                for (int j = 0; j < m_ushGrids.GetLength(1); ++j)
+                {
+                    brw.Write(m_ushGrids[i, j]);
+                }                
+            }
+
+            brw.Write(m_pLines.Length);
+            for (int i = 0; i < m_pLines.Length; ++i)
+            {
+                brw.Write((byte)m_pLines[i].m_iStartX);
+                brw.Write((byte)m_pLines[i].m_iStartY);
+                brw.Write((byte)m_pLines[i].m_iEndX);
+                brw.Write((byte)m_pLines[i].m_iEndY);
+                brw.Write((byte)m_pLines[i].m_eType);
+
+                brw.Write((byte)m_pLines[i].m_iNodeXs.Count);
+                for (int j = 0; j < m_pLines[i].m_iNodeXs.Count; ++j)
+                {
+                    brw.Write((byte)m_pLines[i].m_iNodeXs[j]);
+                    brw.Write((byte)m_pLines[i].m_iNodeYs[j]);
+                }
+            }
+
+            brw.Flush();
+
+            int iLength = (int)brw.BaseStream.Length;
+            using (BinaryReader binReader = new BinaryReader(brw.BaseStream))
+            {
+                binReader.BaseStream.Position = 0;
+                byte[] bytes = binReader.ReadBytes(iLength);
+                brw.BaseStream.Read(bytes, 0, iLength);
+                return bytes;
+            }
+        }
+    }
+
+    public void FromByteArray(byte[] data)
+    {
+        using (MemoryStream ms = new MemoryStream(data))
+        {
+            ms.Position = 0;
+            BinaryReader bwr = new BinaryReader(ms);
+
+            m_iGoldNumber = bwr.ReadByte();
+            m_iMouseNumber = bwr.ReadByte();
+            m_iBombNumber = bwr.ReadByte();
+            m_iGhostBombNumber = bwr.ReadByte();
+            int iWidth = bwr.ReadByte();
+            int iHeight = bwr.ReadByte();
+            m_ushGrids = new ushort[iWidth, iHeight];
+            for (int i = 0; i < iWidth; ++i)
+            {
+                for (int j = 0; j < iHeight; ++j)
+                {
+                    m_ushGrids[i, j] = bwr.ReadUInt16();
+                }                
+            }
+
+            int iLineCount = bwr.ReadInt32();
+            List<CLines> lines = new List<CLines>();
+            for (int i = 0; i < iLineCount; ++i)
+            {
+                CLines line = new CLines();
+                line.m_iStartX = bwr.ReadByte();
+                line.m_iStartY = bwr.ReadByte();
+                line.m_iEndX = bwr.ReadByte();
+                line.m_iEndY = bwr.ReadByte();
+
+                line.m_eType = (ELineType)bwr.ReadByte();
+                line.m_iNodeXs = new List<int>();
+                line.m_iNodeYs = new List<int>();
+                byte nodeCount = bwr.ReadByte();
+                for (int j = 0; j < nodeCount; ++j)
+                {
+                    line.m_iNodeXs.Add(bwr.ReadByte());
+                    line.m_iNodeYs.Add(bwr.ReadByte());
+                }
+
+                lines.Add(line);
+            }
+            m_pLines = lines.ToArray();
+            ms.Close();
+        }
+    }
 
     public bool HasGrid(int iX, int iY)
     {
@@ -145,7 +248,7 @@ public class CPuzzle
         }
     }
 
-    public void AddLines()
+    public void AddLines(int iFrozenLineNumber)
     {
         List<CLines> lines = new List<CLines>();
         for (int i = 0; i < m_ushGrids.GetLength(0); ++i)
@@ -243,6 +346,19 @@ public class CPuzzle
                     }
                 }
             }
+        }
+
+        
+        for (int i = 0; i < iFrozenLineNumber; ++i)
+        {
+            int iChoose = Random.Range(0, m_pLines.Length);
+            int iTry = 200;
+            while (m_pLines[iChoose].m_eType == ELineType.ELT_Frozen && iTry > 0)
+            {
+                --iTry;
+                iChoose = Random.Range(0, m_pLines.Length);
+            }
+            m_pLines[iChoose].m_eType = ELineType.ELT_Frozen;
         }
     }
 
@@ -391,6 +507,88 @@ public class CPuzzle
         }
     }
 
+    public bool CheckConnection()
+    {
+        byte[,] dots = new byte[m_ushGrids.GetLength(0), m_ushGrids.GetLength(1)];
+        bool bDrawStart = false;
+        for (int i = 0; i < m_ushGrids.GetLength(0); ++i)
+        {
+            for (int j = 0; j < m_ushGrids.GetLength(1); ++j)
+            {
+                if (!IsEmpty(i, j))
+                {
+                    if (!bDrawStart)
+                    {
+                        dots[i, j] = 1;
+                        bDrawStart = true;
+                    }
+                    else
+                    {
+                        dots[i, j] = 0;
+                    }
+                }
+                else
+                {
+                    dots[i, j] = 2;
+                }
+            }            
+        }
+
+        bool bHasNew = true;
+        while (bHasNew)
+        {
+            bHasNew = false;
+            for (int i = 0; i < m_ushGrids.GetLength(0); ++i)
+            {
+                for (int j = 0; j < m_ushGrids.GetLength(1); ++j)
+                {
+                    if (1 == dots[i, j])
+                    {
+                        for (int k = 0; k < m_pLines.Length; ++k)
+                        {
+                            bool bIsLine = false;
+                            for (int l = 0; l < m_pLines[k].m_iNodeXs.Count; ++l)
+                            {
+                                if (m_pLines[k].m_iNodeXs[l] == i
+                                 && m_pLines[k].m_iNodeYs[l] == j)
+                                {
+                                    bIsLine = true;
+                                    break;
+                                }
+                            }
+
+                            if (bIsLine)
+                            {
+                                for (int l = 0; l < m_pLines[k].m_iNodeXs.Count; ++l)
+                                {
+                                    if (0 == dots[m_pLines[k].m_iNodeXs[l], m_pLines[k].m_iNodeYs[l]])
+                                    {
+                                        dots[m_pLines[k].m_iNodeXs[l], m_pLines[k].m_iNodeYs[l]] = 1;
+                                        bHasNew = true;
+                                    }
+                                }
+                            }
+                        }
+                        dots[i, j] = 2;
+                    }
+                }
+            }
+        }
+
+        for (int i = 0; i < m_ushGrids.GetLength(0); ++i)
+        {
+            for (int j = 0; j < m_ushGrids.GetLength(1); ++j)
+            {
+                if (0 == dots[i, j])
+                {
+                    return false;
+                }
+            }
+        }
+
+        return true;
+    }
+
     #endregion
 }
 
@@ -426,13 +624,13 @@ public class PuzzleCreator
         -1, 0, 1, 1, 0, -1
     };
 
-    static public CPuzzle CreatePuzzle(int iWidth, int iHeight, int iWallNumber, int iEmptyNumber)
+    static public CPuzzle CreatePuzzle(int iWidth, int iHeight, int iWallNumber, int iEmptyNumber, int iFrozenLineNumber)
     {
         CPuzzle ret = new CPuzzle();
         ret.m_ushGrids = new ushort[iWidth, iHeight];
         ret.PutEmptys(iEmptyNumber);
         ret.PutWalls(iWallNumber);
-        ret.AddLines();
+        ret.AddLines(iFrozenLineNumber);
 
         return ret;
     }
